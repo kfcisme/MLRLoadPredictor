@@ -11,7 +11,7 @@ public class MLPClassifier implements AutoCloseable {
 
     public MLPClassifier(String onnxPath, List<String> featOrder) throws Exception {
         this.env = OrtEnvironment.getEnvironment();
-        SessionOptions so = new SessionOptions();
+        OrtSession.SessionOptions so = new OrtSession.SessionOptions();
         // 若機器支援 CUDA 可在此開啟：so.addCUDA(0);
         this.session = env.createSession(onnxPath, so);
         this.featOrder = featOrder;

@@ -1,7 +1,6 @@
 server_id: "bear_backup"
 
 onnx_model_path: "plugins/MLPLoadPredictor/mlp_player_classifier.onnx"
-# 預測信心門檻（若要 Unknown 機制）
 unknown_threshold: 0.55
 
 # MySQL
@@ -11,14 +10,11 @@ mysql:
   password: "mc_pass"
   pool_size: 8
 
-# 聚合視窗（分鐘）
 window_minutes: 30
 
-# 多元回歸係數（可先手設，之後可自動訓練覆寫）
 regression:
   target: "cpu"  # cpu / ram / power 可各自一組；示例只放 CPU
   intercept: 8.0
-  # 七/八類型的係數（單位例：CPU 百分點/每 0.01 比例）
   beta:
     AFK:        0.2
     Build:      1.3
