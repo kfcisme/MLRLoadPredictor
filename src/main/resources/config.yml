@@ -1,0 +1,46 @@
+server_id: "bear_backup"
+
+onnx_model_path: "plugins/MLPLoadPredictor/mlp_player_classifier.onnx"
+# 預測信心門檻（若要 Unknown 機制）
+unknown_threshold: 0.55
+
+# MySQL
+mysql:
+  url: "jdbc:mysql://127.0.0.1:3306/mc_analytics?useSSL=false&serverTimezone=UTC"
+  username: "mc_user"
+  password: "mc_pass"
+  pool_size: 8
+
+# 聚合視窗（分鐘）
+window_minutes: 30
+
+# 多元回歸係數（可先手設，之後可自動訓練覆寫）
+regression:
+  target: "cpu"  # cpu / ram / power 可各自一組；示例只放 CPU
+  intercept: 8.0
+  # 七/八類型的係數（單位例：CPU 百分點/每 0.01 比例）
+  beta:
+    AFK:        0.2
+    Build:      1.3
+    Explorer:   0.9
+    Explosive:  1.8
+    PvP:        2.0
+    Redstone:   1.7
+    Social:     0.7
+    Survival:   1.0
+  # 滯後項（上一期/上兩期 CPU）
+  ar:
+    y_lag1: 0.45
+    y_lag2: 0.20
+
+# LSTM 構成預測微服務（第3段）
+lstm:
+  enabled: false
+  base_url: "http://127.0.0.1:8900"
+  timeout_ms: 2000
+
+# 擴縮規則（示例）
+autoscale:
+  enabled: false
+  cpu_thresholds: [60, 130, 190, 250] # 依你「總負載=近似伺服器數×100%」規則微調
+  cool_down_minutes: 10

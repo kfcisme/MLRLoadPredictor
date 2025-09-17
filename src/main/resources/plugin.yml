@@ -1,0 +1,9 @@
+name: MLPLoadPredictor
+version: '1.0.1'
+main: mw.wowkfccc.TISF.mlp.mLPLoadPredictor.MLPPlugin
+api-version: '1.21'
+commands:
+  mlp-reload:
+    description: Reload config and models
+    usage: /mlp-reload
+
