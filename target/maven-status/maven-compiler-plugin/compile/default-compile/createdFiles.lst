@@ -1,8 +1,9 @@
 mw\wowkfccc\TISF\mlp\mLPLoadPredictor\MLPClassifier$Out.class
 mw\wowkfccc\TISF\mlp\mLPLoadPredictor\TypeAggregator.class
+me\wowkfccc\mlp\FeatureBuilder.class
+mw\wowkfccc\TISF\mlp\mLPLoadPredictor\SchemaMigrator.class
 mw\wowkfccc\TISF\mlp\mLPLoadPredictor\AutoScaler.class
 mw\wowkfccc\TISF\mlp\mLPLoadPredictor\LoadRegressor$Coef.class
-mw\wowkfccc\TISF\mlp\mLPLoadPredictor\FeatureBuilder.class
 mw\wowkfccc\TISF\mlp\mLPLoadPredictor\TypeAggregator$Comp.class
 mw\wowkfccc\TISF\mlp\mLPLoadPredictor\ApiClient.class
 mw\wowkfccc\TISF\mlp\mLPLoadPredictor\MLPPlugin.class
