@@ -6,7 +6,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
-/** 簡單 JSON API 用戶端（同步、最小依賴）。 */
 public class ApiClient {
     private final HttpClient client;
     private final String baseUrl;

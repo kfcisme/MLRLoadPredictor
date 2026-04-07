@@ -14,7 +14,7 @@ public class TypeAggregator {
         for (int i=0;i<labels.size();i++){
             String lab = labels.get(i);
             float conf = confidences.get(i);
-            if (conf < unknownThreshold) continue; // 丟掉低信心
+            if (conf < unknownThreshold) continue;
             c.count.merge(lab, 1, Integer::sum);
             c.total++;
         }

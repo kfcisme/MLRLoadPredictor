@@ -5,7 +5,6 @@ import java.util.*;
 
 public class SchemaMigrator {
 
-    // 事件欄位（原始次數），型別都用 INT，必要時你可改 BIGINT/DOUBLE
     private static final LinkedHashMap<String, String> EVENT_COLUMNS = new LinkedHashMap<>();
     static {
         EVENT_COLUMNS.put("pickup", "INT");
@@ -42,7 +41,6 @@ public class SchemaMigrator {
         try (Connection cn = db.conn()) {
             cn.setAutoCommit(true);
 
-            // 1) player_events_30m（原始事件 + afktime）
             execUpdate(cn, """
                 CREATE TABLE IF NOT EXISTS player_events_30m (
                   server_id   VARCHAR(64),
@@ -52,12 +50,11 @@ public class SchemaMigrator {
                   PRIMARY KEY (server_id, window_end, player_id)
                 ) ENGINE=InnoDB
             """);
-            // 加缺的事件欄
             for (var e : EVENT_COLUMNS.entrySet()) {
                 ensureColumn(cn, dbName, "player_events_30m", e.getKey(), e.getValue() + " DEFAULT 0");
             }
 
-            // 2) player_type_pred
+            // player_type_pred
             execUpdate(cn, """
                 CREATE TABLE IF NOT EXISTS player_type_pred (
                   server_id   VARCHAR(64),
@@ -71,7 +68,7 @@ public class SchemaMigrator {
             ensureColumn(cn, dbName, "player_type_pred", "label", "VARCHAR(32)");
             ensureColumn(cn, dbName, "player_type_pred", "confidence", "FLOAT");
 
-            // 3) server_comp_30m
+            // server_comp
             execUpdate(cn, """
                 CREATE TABLE IF NOT EXISTS server_comp_30m (
                   server_id      VARCHAR(64),
@@ -82,13 +79,12 @@ public class SchemaMigrator {
                   PRIMARY KEY (server_id, window_end)
                 ) ENGINE=InnoDB
             """);
-            // 確保各 p_* 存在
             for (String k : List.of("AFK","Build","Explorer","Explosive","PvP","Redstone","Social","Survival")) {
                 ensureColumn(cn, dbName, "server_comp_30m", "p_" + k, "FLOAT");
             }
             ensureColumn(cn, dbName, "server_comp_30m", "total_players", "INT");
 
-            // 4) server_load_30m（你的實際 CPU/RAM/Power ground truth）
+            // server_load
             execUpdate(cn, """
                 CREATE TABLE IF NOT EXISTS server_load_30m (
                   server_id  VARCHAR(64),
@@ -100,7 +96,7 @@ public class SchemaMigrator {
                 ) ENGINE=InnoDB
             """);
 
-            // 5) server_load_pred_30m（預測值）
+            //server_load_pred
             execUpdate(cn, """
                 CREATE TABLE IF NOT EXISTS server_load_pred_30m (
                   server_id  VARCHAR(64),

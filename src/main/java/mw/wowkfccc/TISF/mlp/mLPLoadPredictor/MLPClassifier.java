@@ -7,12 +7,11 @@ import java.util.*;
 public class MLPClassifier implements AutoCloseable {
     private final OrtEnvironment env;
     private final OrtSession session;
-    private final List<String> featOrder; // 與訓練時保存的 feat_cols 一致（建議固定順序）
+    private final List<String> featOrder;
 
     public MLPClassifier(String onnxPath, List<String> featOrder) throws Exception {
         this.env = OrtEnvironment.getEnvironment();
         OrtSession.SessionOptions so = new OrtSession.SessionOptions();
-        // 若機器支援 CUDA 可在此開啟：so.addCUDA(0);
         this.session = env.createSession(onnxPath, so);
         this.featOrder = featOrder;
     }

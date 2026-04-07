@@ -36,12 +36,11 @@ public class MLPPlugin extends JavaPlugin {
         );
 
         try {
-            // 初始化 MLP（feat 順序請與訓練一致）
+            // 初始化 MLP
             featOrder = me.wowkfccc.mlp.FeatureBuilder.defaultOrder();
             classes   = Arrays.asList("AFK","Build","Explorer","Explosive","PvP","Redstone","Social","Survival");
             clf = new MLPClassifier(cfg.getString("onnx_model_path"), featOrder);
 
-            // 初始化多元回歸係數
             var beta = new HashMap<String, Double>();
             for (String k : classes) beta.put(k, cfg.getDouble("regression.beta."+k, 0.0));
             LoadRegressor.Coef co = new LoadRegressor.Coef();
@@ -53,8 +52,7 @@ public class MLPPlugin extends JavaPlugin {
 
             scaler = new AutoScaler(cfg.getIntegerList("autoscale.cpu_thresholds"));
 
-            // 每 5 分鐘啟動一次異步排程
-            long periodTicks = 5 * 60 * 20; // 5分鐘 * 60秒 * 20 tps
+            long periodTicks = 5 * 60 * 20; // 5mins * 60sec * 20 tps
             getServer().getScheduler().runTaskTimerAsynchronously(this, this::pipelineOnce, 200L, periodTicks);
 
             getLogger().info("MLPLoadPredictor enabled.");
@@ -66,11 +64,9 @@ public class MLPPlugin extends JavaPlugin {
 
     private void pipelineOnce() {
         try {
-            // 1) 取得當前對齊視窗尾端時間（例：00/30分）
             Timestamp windowEnd = currentAlignedWindowEnd();
-            Timestamp windowEndPlus = new Timestamp(windowEnd.getTime() + windowMin * 60L * 1000L); // t+1 的時間
+            Timestamp windowEndPlus = new Timestamp(windowEnd.getTime() + windowMin * 60L * 1000L);
 
-            // 2) 從原始事件表抓此視窗的所有玩家資料
             String q = "SELECT * FROM player_events_30m WHERE server_id=? AND window_end=?";
             List<String> labels = new ArrayList<>();
             List<Float> confidences = new ArrayList<>();
@@ -82,13 +78,11 @@ public class MLPPlugin extends JavaPlugin {
 
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
-                        // 2.1 將事件次數 → 特徵（rate_*、AFK_ratio、active_minutes）
                         Map<String, Float> fmap = me.wowkfccc.mlp.FeatureBuilder.fromResultRow(rs);
 
-                        // 2.2 ONNX 分類
+                        // ONNX
                         MLPClassifier.Out out = clf.predict(fmap, classes);
 
-                        // 2.3 寫入玩家類型推論
                         String pid = safeStr(rs, "player_id");
                         insertPred(windowEnd, pid, out.label, max(out.probs));
 
@@ -99,24 +93,21 @@ public class MLPPlugin extends JavaPlugin {
                 }
             }
             if (rowCount == 0) {
-                getLogger().info("[MLP] 視窗 " + windowEnd + " 無玩家資料，跳過。");
+                getLogger().info("[MLP] lable " + windowEnd + " cant find player data");
                 return;
             }
 
-            // 3) 聚合成類型分布（丟棄低信心）
             TypeAggregator.Comp comp = TypeAggregator.toComposition(labels, confidences, unknownThr);
             upsertComp(windowEnd, comp);
 
-            // 4) 以迴歸估算「當前視窗」負載
             double cpuHatNow = reg.predictCpu(serverId, windowEnd, comp.p);
             upsertLoadPred(windowEnd, cpuHatNow, null, null, "regression");
 
-            // 5) 可選：呼叫 LSTM 微服務，預測「下一視窗」的類型分布 → 估下一視窗負載
             if (getConfig().getBoolean("lstm.enabled", false)) {
-                List<double[]> compSeq = fetchRecentCompSeq(windowEnd, 6); // 最近6個視窗
+                List<double[]> compSeq = fetchRecentCompSeq(windowEnd, 6);
                 if (compSeq.size() >= 2) {
                     List<Integer> nSeq = fetchRecentNSeq(windowEnd, 6);
-                    double[] pNext = callCompForecast(compSeq, nSeq); // 8 維
+                    double[] pNext = callCompForecast(compSeq, nSeq);
                     if (pNext != null) {
                         Map<String, Double> pMap = new HashMap<>();
                         String[] keys = {"AFK","Build","Explorer","Explosive","PvP","Redstone","Social","Survival"};
@@ -126,18 +117,15 @@ public class MLPPlugin extends JavaPlugin {
                         for (int i=0; i<8; i++) pMap.put(keys[i], Math.max(0.0, pNext[i]) / sum);
 
                         double cpuHatNext = reg.predictCpu(serverId, windowEnd, pMap);
-                        // 你可以選擇把「下一窗」的預測，存到 t+1 的時間戳（較直觀）
                         upsertLoadPred(windowEndPlus, cpuHatNext, null, null, "lstm+reg");
-                        getLogger().info(String.format("[MLP] %s → 估下一窗CPU=%.1f (source=lstm+reg)", windowEndPlus, cpuHatNext));
+                        getLogger().info(String.format("[MLP] %s predict next CPU=%.1f (source=lstm+reg)", windowEndPlus, cpuHatNext));
                     }
                 }
             }
 
-            // 6) 可選：自動擴縮
             if (getConfig().getBoolean("autoscale.enabled", false)) {
                 int targetN = scaler.decideServers(cpuHatNow);
                 getLogger().info("Predicted CPU(now)=" + String.format("%.1f", cpuHatNow) + " → target servers=" + targetN);
-                // TODO: 連接你的實際啟/停服機制
             }
 
         } catch (Exception e) {
@@ -205,7 +193,7 @@ public class MLPPlugin extends JavaPlugin {
     public boolean onCommand(CommandSender s, Command cmd, String label, String[] args){
         if (label.equalsIgnoreCase("mlp-reload")){
             reloadConfig();
-            s.sendMessage("§aMLP config reloaded.（下輪視窗會套用）");
+            s.sendMessage("§aMLP config reloaded.");
             return true;
         }
         return false;
@@ -217,14 +205,13 @@ public class MLPPlugin extends JavaPlugin {
         return Timestamp.valueOf(we.toLocalDateTime());
     }
     private String parseDbNameFromUrl(String jdbcUrl){
-        // 例: jdbc:mysql://127.0.0.1:3306/mc_analytics?xxx
         try {
             String afterHost = jdbcUrl.substring(jdbcUrl.indexOf("://")+3);
             String afterSlash = afterHost.substring(afterHost.indexOf("/")+1);
             String dbName = afterSlash.split("\\?")[0];
             return dbName;
         } catch (Exception e){
-            getLogger().warning("無法從 JDBC URL 解析 DB 名稱，請在 config.yml 加 mysql.database");
+            getLogger().warning("[WARN]cant findJDBC URL, check config");
             return "";
         }
     }
@@ -274,7 +261,6 @@ public class MLPPlugin extends JavaPlugin {
         if (!cfg.getBoolean("lstm.enabled", false)) return null;
         ApiClient api = new ApiClient(cfg.getString("lstm.base_url"), cfg.getInt("lstm.timeout_ms", 2000));
 
-        // 手工組 JSON（也可用 Jackson）
         StringBuilder sb = new StringBuilder();
         sb.append("{\"server_id\":\"").append(serverId).append("\",\"comp_seq\":[");
         for (int i=0; i<compSeq.size(); i++) {
@@ -299,14 +285,13 @@ public class MLPPlugin extends JavaPlugin {
         sb.append("}");
 
         String res = api.postJson("/forecast_next_comp", sb.toString());
-        // 超輕量解析：找到第一個 [ ... ] 當作 t+1 的分布
         int idx = res.indexOf("\"p_hat\"");
         if (idx < 0) return null;
         int lb = res.indexOf("[", idx);
         int rb = res.indexOf("]", lb);
         if (lb < 0 || rb < 0) return null;
 
-        String arr = res.substring(lb+1, rb); // 第一個 step
+        String arr = res.substring(lb+1, rb);
         String[] parts = arr.replace("[","").replace("]","").split(",");
         if (parts.length < 8) return null;
 

@@ -3,7 +3,7 @@ package mw.wowkfccc.TISF.mlp.mLPLoadPredictor;
 import java.util.List;
 
 public class AutoScaler {
-    private final List<Integer> cpuSteps; // e.g., [60,130,190,250] 對應 1..N 台
+    private final List<Integer> cpuSteps;
     public AutoScaler(List<Integer> cpuSteps){ this.cpuSteps = cpuSteps; }
 
     public int decideServers(double cpuHat){

@@ -12,8 +12,9 @@ mysql:
 
 window_minutes: 30
 
+# Add cpu, memory, and tps to the regression if needed
 regression:
-  target: "cpu"  # cpu / ram / power 可各自一組；示例只放 CPU
+  target: "cpu"
   intercept: 8.0
   beta:
     AFK:        0.2
@@ -24,19 +25,18 @@ regression:
     Redstone:   1.7
     Social:     0.7
     Survival:   1.0
-  # 滯後項（上一期/上兩期 CPU）
   ar:
     y_lag1: 0.45
     y_lag2: 0.20
 
-# LSTM 構成預測微服務（第3段）
 lstm:
   enabled: false
   base_url: "http://127.0.0.1:8900"
   timeout_ms: 2000
 
-# 擴縮規則（示例）
+# the most basic autoscaling strategy
+# with more accurate prediction and scaling, set enable to false and download https://github.com/kfcisme/orchestrator-paper instead.
 autoscale:
   enabled: false
-  cpu_thresholds: [60, 130, 190, 250] # 依你「總負載=近似伺服器數×100%」規則微調
+  cpu_thresholds: [60, 130, 190, 250]
   cool_down_minutes: 10
